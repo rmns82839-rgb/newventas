@@ -1,5 +1,4 @@
-// CONFIGURACIÓN (REEMPLAZA ESTA URL CUANDO TENGAS LA DE RENDER)
-
+// CONFIGURACIÓN
 const API_URL = "https://newventas.onrender.com/api";
 
 const grupos = {
@@ -12,12 +11,12 @@ const grupos = {
 let grupoActivo = null;
 let movimientos = [];
 
-// VALIDAR ACCESO
+// 1. VALIDAR ACCESO
 function validarAcceso() {
     const pin = document.getElementById('pinAcceso').value;
     if (grupos[pin]) {
         grupoActivo = grupos[pin];
-        document.getElementById('loginModal').style.display = 'none';
+        document.getElementById('loginModal').classList.add('hidden'); // Uso de classList es más limpio
         document.getElementById('appContent').classList.remove('hidden');
         document.getElementById('infoGrupo').innerText = `Sesión: ${grupoActivo.lider}`;
         cargarDatosDesdeNube();
@@ -26,7 +25,7 @@ function validarAcceso() {
     }
 }
 
-// CARGAR DATOS
+// 2. CARGAR DATOS (Sincronización con Aiven)
 async function cargarDatosDesdeNube() {
     try {
         const [resMov, resAud] = await Promise.all([
@@ -34,24 +33,35 @@ async function cargarDatosDesdeNube() {
             fetch(`${API_URL}/auditoria`)
         ]);
         
-        movimientos = await resMov.json();
-        const auditoria = await resAud.json();
+        const datosMov = await resMov.json();
+        const datosAud = await resAud.json();
         
+        // Convertimos los valores a números por si vienen como texto
+        movimientos = datosMov.map(m => ({
+            ...m,
+            total: parseFloat(m.total) || 0,
+            saldo: parseFloat(m.saldo) || 0
+        }));
+
         actualizarInterfaz(movimientos);
-        renderizarAuditoria(auditoria);
+        renderizarAuditoria(datosAud);
     } catch (e) {
         console.error("Error sincronizando:", e);
     }
 }
 
-// MOSTRAR VALOR MANUAL
+// 3. MOSTRAR VALOR MANUAL
 function verificarManual() {
     const select = document.getElementById('selectProducto');
     const manual = document.getElementById('valorManual');
-    manual.classList.toggle('hidden', select.value !== 'MANUAL');
+    if(select.value === 'MANUAL') {
+        manual.classList.remove('hidden');
+    } else {
+        manual.classList.add('hidden');
+    }
 }
 
-// REGISTRAR
+// 4. REGISTRAR EN LA NUBE
 async function registrarMovimiento() {
     const tipo = document.getElementById('tipoMov').value;
     const metodo = document.getElementById('metodoPago').value;
@@ -62,7 +72,9 @@ async function registrarMovimiento() {
                 parseFloat(document.getElementById('valorManual').value) : 
                 parseFloat(selectProd.value);
 
-    if (!valor || valor <= 0) return alert("Por favor ingresa un valor");
+    if (!valor || valor <= 0) {
+        return alert("Por favor ingresa un valor válido.");
+    }
 
     const nuevoMov = {
         lider: grupoActivo.lider,
@@ -72,7 +84,7 @@ async function registrarMovimiento() {
         concepto: desc || selectProd.options[selectProd.selectedIndex].text,
         total: valor,
         saldo: (tipo === 'DEUDA' || metodo === 'FIADO') ? valor : 0,
-        comprobante_url: "" 
+        comprobante_url: "" // Próximamente Cloudinary
     };
 
     try {
@@ -81,17 +93,22 @@ async function registrarMovimiento() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(nuevoMov)
         });
+        
         if (res.ok) {
-            cargarDatosDesdeNube();
+            cargarDatosDesdeNube(); // Refresca todo automáticamente
+            // Limpiar campos
             document.getElementById('descripcion').value = "";
             document.getElementById('valorManual').value = "";
+            alert("✅ Registro guardado en la nube");
+        } else {
+            throw new Error("Error en el servidor");
         }
     } catch (e) {
-        alert("Error al guardar");
+        alert("❌ No se pudo guardar. Revisa tu conexión.");
     }
 }
 
-// DIBUJAR TABLA Y TOTALES
+// 5. DIBUJAR TABLA Y TOTALES
 function actualizarInterfaz(datos) {
     const tabla = document.getElementById('tablaCuerpo');
     tabla.innerHTML = "";
@@ -99,25 +116,26 @@ function actualizarInterfaz(datos) {
     let v = 0, d = 0, r = 0;
 
     datos.forEach(m => {
-        const total = parseFloat(m.total);
-        const saldo = parseFloat(m.saldo);
-        
-        if (m.tipo === 'VENTA') v += total;
-        if (m.tipo === 'DEUDA') d += saldo;
-        if (m.tipo === 'RETIRO') r += total;
+        if (m.tipo === 'VENTA') v += m.total;
+        if (m.tipo === 'DEUDA' || m.metodo_pago === 'FIADO') d += m.saldo;
+        if (m.tipo === 'RETIRO') r += m.total;
 
         tabla.innerHTML += `
-            <tr class="text-sm">
+            <tr class="border-b border-gray-700 hover:bg-gray-800/50">
                 <td class="p-4">
                     <div class="font-bold">${m.concepto}</div>
-                    <div class="text-[10px] text-gray-500">${new Date(m.fecha).toLocaleDateString()} - ${m.lider}</div>
+                    <div class="text-[10px] text-gray-500">${new Date(m.fecha).toLocaleString()} - ${m.lider}</div>
                 </td>
-                <td class="p-4"><span class="bg-gray-700 px-2 py-1 rounded text-[10px]">${m.metodo_pago}</span></td>
+                <td class="p-4">
+                    <span class="bg-gray-700 px-2 py-1 rounded text-[10px] font-bold">${m.metodo_pago}</span>
+                </td>
                 <td class="p-4 text-right font-bold ${m.tipo === 'RETIRO' ? 'text-red-400' : 'text-green-400'}">
-                    $${total.toLocaleString()}
+                    $${m.total.toLocaleString()}
                 </td>
                 <td class="p-4 text-center">
-                    ${saldo > 0 ? '<i class="fas fa-clock text-orange-500"></i>' : '<i class="fas fa-check-circle text-green-500"></i>'}
+                    ${m.saldo > 0 ? 
+                        '<i class="fas fa-clock text-orange-500" title="Pendiente"></i>' : 
+                        '<i class="fas fa-check-circle text-green-500" title="Pagado"></i>'}
                 </td>
             </tr>
         `;
@@ -129,9 +147,16 @@ function actualizarInterfaz(datos) {
     document.getElementById('saldoCaja').innerText = `$${(v - r).toLocaleString()}`;
 }
 
+// 6. RENDERIZAR AUDITORÍA
 function renderizarAuditoria(logs) {
     const div = document.getElementById('logAuditoria');
+    if (!div) return; // Seguridad por si el ID cambia
+    
     div.innerHTML = logs.map(l => `
-        <div>[${new Date(l.fecha).toLocaleTimeString()}] ${l.lider}: ${l.accion} - ${l.detalles}</div>
+        <div class="border-b border-gray-800 py-1">
+            <span class="text-blue-400 text-[9px]">[${new Date(l.fecha).toLocaleTimeString()}]</span> 
+            <span class="text-white font-bold">${l.lider}:</span> 
+            <span class="text-gray-400">${l.accion} - ${l.detalles}</span>
+        </div>
     `).join('');
 }
