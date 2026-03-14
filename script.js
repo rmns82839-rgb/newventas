@@ -26,27 +26,28 @@ function validarAcceso() {
 }
 
 // 2. CARGAR DATOS (Sincronización con Aiven)
+
 async function cargarDatosDesdeNube() {
     try {
-        const [resMov, resAud] = await Promise.all([
-            fetch(`${API_URL}/movimientos`),
-            fetch(`${API_URL}/auditoria`)
-        ]);
+        const res = await fetch(`${API_URL}/movimientos`);
         
-        const datosMov = await resMov.json();
-        const datosAud = await resAud.json();
-        
-        // Convertimos los valores a números por si vienen como texto
-        movimientos = datosMov.map(m => ({
-            ...m,
-            total: parseFloat(m.total) || 0,
-            saldo: parseFloat(m.saldo) || 0
-        }));
+        // Si el servidor responde mal, no intentamos convertir a JSON
+        if (!res.ok) {
+            console.error("El servidor respondió con error");
+            return;
+        }
 
-        actualizarInterfaz(movimientos);
-        renderizarAuditoria(datosAud);
+        const datos = await res.json();
+        if (Array.isArray(datos)) {
+            movimientos = datos.map(m => ({
+                ...m,
+                total: parseFloat(m.total) || 0,
+                saldo: parseFloat(m.saldo) || 0
+            }));
+            actualizarInterfaz(movimientos);
+        }
     } catch (e) {
-        console.error("Error sincronizando:", e);
+        console.error("Error de conexión:", e);
     }
 }
 
