@@ -1,5 +1,6 @@
 // CONFIGURACIÓN (REEMPLAZA ESTA URL CUANDO TENGAS LA DE RENDER)
-const API_URL = "https://TU-APP-EN-RENDER.onrender.com/api";
+
+const API_URL = "https://newventas.onrender.com/api";
 
 const grupos = {
     "1111": { nombre: "Grupo A", lider: "Juan Perez" },
