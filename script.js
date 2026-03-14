@@ -68,13 +68,19 @@ async function registrarMovimiento() {
     const metodo = document.getElementById('metodoPago').value;
     const selectProd = document.getElementById('selectProducto');
     const desc = document.getElementById('descripcion').value;
+    const valorManualInput = document.getElementById('valorManual').value;
     
-    let valor = selectProd.value === 'MANUAL' ? 
-                parseFloat(document.getElementById('valorManual').value) : 
-                parseFloat(selectProd.value);
+    // VALIDACIÓN CRÍTICA PARA EVITAR EL NaN
+    let valor = 0;
+    if (selectProd.value === 'MANUAL') {
+        valor = parseFloat(valorManualInput);
+    } else {
+        valor = parseFloat(selectProd.value);
+    }
 
-    if (!valor || valor <= 0) {
-        return alert("Por favor ingresa un valor válido.");
+    // Si el valor sigue siendo inválido o no es un número, frenamos aquí
+    if (isNaN(valor) || valor <= 0) {
+        return alert("⚠️ Por favor, ingresa un precio válido (solo números).");
     }
 
     const nuevoMov = {
@@ -83,10 +89,12 @@ async function registrarMovimiento() {
         tipo: tipo,
         metodo_pago: metodo,
         concepto: desc || selectProd.options[selectProd.selectedIndex].text,
-        total: valor,
+        total: valor, // Aquí ya nos aseguramos que ES UN NÚMERO
         saldo: (tipo === 'DEUDA' || metodo === 'FIADO') ? valor : 0,
-        comprobante_url: "" // Próximamente Cloudinary
+        comprobante_url: "" 
     };
+
+    console.log("Enviando a la nube:", nuevoMov); // Para que veas en consola qué se envía
 
     try {
         const res = await fetch(`${API_URL}/movimientos`, {
@@ -96,16 +104,17 @@ async function registrarMovimiento() {
         });
         
         if (res.ok) {
-            cargarDatosDesdeNube(); // Refresca todo automáticamente
-            // Limpiar campos
+            alert("✅ ¡Venta guardada con éxito!");
+            cargarDatosDesdeNube();
             document.getElementById('descripcion').value = "";
             document.getElementById('valorManual').value = "";
-            alert("✅ Registro guardado en la nube");
         } else {
-            throw new Error("Error en el servidor");
+            const errorData = await res.json();
+            console.error("Detalle del error:", errorData);
+            alert("❌ Error en el servidor (Aiven rechazó los datos)");
         }
     } catch (e) {
-        alert("❌ No se pudo guardar. Revisa tu conexión.");
+        alert("❌ Error de conexión. Revisa tu internet.");
     }
 }
 
