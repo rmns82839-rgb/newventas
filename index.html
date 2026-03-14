@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Ventas - Iglesia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#1a202c] text-white font-sans">
+
+    <div id="loginModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+        <div class="bg-[#2d3748] p-8 rounded-3xl border border-gray-700 w-80 text-center shadow-2xl">
+            <i class="fas fa-church text-4xl text-blue-500 mb-4"></i>
+            <h2 class="text-xl font-bold mb-4">Ingreso Líderes</h2>
+            <input type="password" id="pinAcceso" placeholder="PIN" class="w-full p-3 rounded-xl bg-gray-900 border border-gray-600 mb-4 text-center text-2xl">
+            <button onclick="validarAcceso()" class="w-full bg-blue-600 p-3 rounded-xl font-bold hover:bg-blue-700 transition">ENTRAR</button>
+            <p id="errorLogin" class="text-red-500 mt-2 hidden text-sm">PIN incorrecto</p>
+        </div>
+    </div>
+
+    <div id="appContent" class="hidden max-w-4xl mx-auto px-4 py-6">
+        <header class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold">Ventas Iglesia</h1>
+                <p id="infoGrupo" class="text-gray-400 text-sm italic"></p>
+            </div>
+            <button onclick="window.print()" class="bg-gray-700 p-3 rounded-xl no-print hover:bg-gray-600">
+                <i class="fas fa-print"></i>
+            </button>
+        </header>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-center">
+            <div class="bg-green-900/20 p-3 rounded-2xl border border-green-500/30">
+                <p class="text-[10px] text-green-400 uppercase">Ventas</p>
+                <h3 id="totalVentas" class="text-lg font-bold text-green-400">$0</h3>
+            </div>
+            <div class="bg-orange-900/20 p-3 rounded-2xl border border-orange-500/30">
+                <p class="text-[10px] text-orange-400 uppercase">Deudas</p>
+                <h3 id="totalDeudas" class="text-lg font-bold text-orange-400">$0</h3>
+            </div>
+            <div class="bg-red-900/20 p-3 rounded-2xl border border-red-500/30">
+                <p class="text-[10px] text-red-400 uppercase">Retiros</p>
+                <h3 id="totalRetiros" class="text-lg font-bold text-red-400">$0</h3>
+            </div>
+            <div class="bg-blue-900/20 p-3 rounded-2xl border border-blue-500/30">
+                <p class="text-[10px] text-blue-400 uppercase">En Caja</p>
+                <h3 id="saldoCaja" class="text-lg font-bold text-blue-400">$0</h3>
+            </div>
+        </div>
+
+        <div class="bg-[#2d3748] p-5 rounded-3xl border border-gray-700 mb-6 no-print shadow-xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <select id="tipoMov" class="bg-gray-900 p-3 rounded-xl border border-gray-600">
+                    <option value="VENTA">Nueva Venta</option>
+                    <option value="DEUDA">Fiar Producto</option>
+                    <option value="RETIRO">Gasto / Retiro</option>
+                </select>
+                <select id="metodoPago" class="bg-gray-900 p-3 rounded-xl border border-gray-600">
+                    <option value="EFECTIVO">Efectivo</option>
+                    <option value="NEQUI">Nequi</option>
+                    <option value="LLAVE">Llave</option>
+                    <option value="FIADO">Fiado</option>
+                </select>
+                <select id="selectProducto" onchange="verificarManual()" class="bg-gray-900 p-3 rounded-xl border border-gray-600">
+                    <option value="3000">Empanada / Actividad ($3.000)</option>
+                    <option value="12000">Almuerzo ($12.000)</option>
+                    <option value="MANUAL">Otro Valor...</option>
+                </select>
+                <input type="number" id="valorManual" placeholder="Valor $" class="hidden bg-gray-900 p-3 rounded-xl border border-gray-600">
+                <input type="text" id="descripcion" placeholder="¿Qué se vendió?" class="bg-gray-900 p-3 rounded-xl border border-gray-600">
+                <div class="flex items-center gap-2 bg-gray-900 p-3 rounded-xl border border-gray-600">
+                    <i class="fas fa-image text-gray-500"></i>
+                    <input type="file" id="fotoEvidencia" class="text-[10px]">
+                </div>
+            </div>
+            <button onclick="registrarMovimiento()" class="w-full bg-blue-600 mt-4 p-3 rounded-xl font-bold hover:bg-blue-500 transition shadow-lg shadow-blue-900/20">
+                GUARDAR EN BASE DE DATOS
+            </button>
+        </div>
+
+        <div class="bg-[#2d3748] rounded-3xl border border-gray-700 overflow-hidden shadow-2xl">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-gray-800/80 text-[10px] uppercase text-gray-400">
+                    <tr>
+                        <th class="p-4">Detalle</th>
+                        <th class="p-4">Pago</th>
+                        <th class="p-4 text-right">Monto</th>
+                        <th class="p-4 text-center">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCuerpo" class="divide-y divide-gray-700"></tbody>
+            </table>
+        </div>
+
+        <div class="mt-6 no-print">
+            <details class="bg-gray-900/50 rounded-2xl border border-gray-800">
+                <summary class="p-4 cursor-pointer text-gray-500 text-sm font-bold">Ver Historial de Cambios</summary>
+                <div id="logAuditoria" class="p-4 text-[10px] font-mono text-gray-400 space-y-1"></div>
+            </details>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

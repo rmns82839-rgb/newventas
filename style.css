@@ -1,0 +1,57 @@
+/* --- Estilos Generales --- */
+:root {
+    --blue-glow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+body { 
+    background-color: #1a202c; 
+    margin: 0;
+    padding: 0;
+}
+
+input:focus, select:focus {
+    box-shadow: var(--blue-glow);
+    border-color: #3b82f6 !important;
+    outline: none;
+}
+
+/* --- Optimización para el Historial --- */
+#logAuditoria {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4a5568 #1a202c;
+}
+
+/* --- ESTILO PARA IMPRESIÓN (Aquí estaba el error) --- */
+@media print {
+    .no-print { 
+        display: none !important; 
+    }
+    
+    body { 
+        background: white !important; 
+        color: black !important; 
+    }
+
+    /* Usamos selectores simples para evitar errores con caracteres especiales de Tailwind */
+    div, section, table {
+        background-color: white !important;
+        color: black !important;
+        border-color: #ddd !important;
+    }
+
+    h1, h2, h3, p, td, th {
+        color: black !important;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        border: 1px solid #ddd !important;
+        padding: 8px !important;
+    }
+}
